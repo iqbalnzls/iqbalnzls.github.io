@@ -57,20 +57,25 @@
         <textarea class="text-box" id="outputText" name="outputText" readonly></textarea>
     </form>
 </div>
+<script src="wasm_exec.js"></script>
 <script>
+    const go = new Go();
+
+    WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
+        go.run(result.instance);
+    });
+
     document.getElementById('convertForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const input = document.getElementById('inputText').value;
-        const response = await fetch('/convert', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ text: input })
-        });
-        const data = await response.json();
-        const parsed = JSON.parse(data.result);
-        document.getElementById('outputText').value = JSON.stringify(parsed, null, 2);
+
+        try {
+            const result = convertText(input);
+            const parsed = JSON.parse(result); // if it's JSON-like
+            document.getElementById('outputText').value = JSON.stringify(parsed, null, 2);
+        } catch (err) {
+            document.getElementById('outputText').value = result || 'Error: ' + err.message;
+        }
     });
 </script>
 </body>

@@ -3,9 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"log"
-	"net/http"
 	"strings"
+	"syscall/js"
 )
 
 type ConversionRequest struct {
@@ -17,40 +16,17 @@ type ConversionResponse struct {
 }
 
 func main() {
-	// Serve static files
-	http.Handle("/", http.FileServer(http.Dir(".")))
-
-	// Handle conversion endpoint
-	http.HandleFunc("/convert", handler)
-
-	log.Println("Server starting on :8282")
-	if err := http.ListenAndServe(":8282", nil); err != nil {
-		log.Fatal(err)
-	}
+	js.Global().Set("convertText", js.FuncOf(convertText))
+	select {}
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+func convertText(this js.Value, args []js.Value) interface{} {
+	input := args[0].String()
 
-	var req ConversionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	b := bytes.TrimSpace([]byte(req.Text))
-
+	b := bytes.TrimSpace([]byte(input))
 	result := UnescapeString(string(b))
 
-	response := ConversionResponse{
-		Result: result,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	return js.ValueOf(result)
 }
 
 func UnescapeString(str string) string {

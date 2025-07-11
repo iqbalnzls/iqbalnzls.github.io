@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Responsive White UI</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 40px 0;
+            font-family: monospace;
+            background-color: #fff;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .text-box {
+            width: 100%;
+            min-height: 400px;
+            border: 1px solid #000;
+            border-radius: 20px;
+            padding: 10px;
+            font-size: 1rem;
+            resize: vertical;
+            margin-bottom: 16px;
+        }
+
+        .button {
+            background-color: #000;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-family: monospace;
+            margin-bottom: 16px;
+        }
+
+        .button:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <form id="convertForm">
+        <textarea class="text-box" id="inputText" name="inputText"></textarea>
+        <button type="submit" class="button">convert</button>
+        <textarea class="text-box" id="outputText" name="outputText" readonly></textarea>
+    </form>
+</div>
+<script>
+    document.getElementById('convertForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('inputText').value;
+        const response = await fetch('/convert', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ text: input })
+        });
+        const data = await response.json();
+        const parsed = JSON.parse(data.result);
+        document.getElementById('outputText').value = JSON.stringify(parsed, null, 2);
+    });
+</script>
+</body>
+</html>

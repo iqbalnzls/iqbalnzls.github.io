@@ -18,7 +18,7 @@ type ConversionResponse struct {
 
 func main() {
 	// Serve static files
-	http.Handle("/", http.FileServer(http.Dir("static")))
+	http.Handle("/", http.FileServer(http.Dir(".")))
 
 	// Handle conversion endpoint
 	http.HandleFunc("/convert", handler)

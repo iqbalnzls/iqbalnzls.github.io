@@ -2,81 +2,142 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Responsive White UI</title>
+    <title>Go WASM JSON Viewer</title>
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
         body {
-            margin: 0;
-            padding: 40px 0;
             font-family: monospace;
-            background-color: #fff;
+            padding: 40px;
+            background: #fdfdfd;
+            height: 100%;
             display: flex;
             justify-content: center;
         }
 
         .container {
-            width: 90%;
-            max-width: 800px;
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 1400px;
         }
 
-        .text-box {
-            width: 100%;
-            min-height: 400px;
-            border: 1px solid #000;
-            border-radius: 20px;
-            padding: 10px;
-            font-size: 1rem;
+        textarea, pre {
+            flex: 1;
+            min-height: 600px;
+            max-height: 850px;
+            padding: 16px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
             resize: vertical;
-            margin-bottom: 16px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 10px;
         }
 
         .button {
-            background-color: #000;
-            color: white;
-            border: none;
-            border-radius: 8px;
             padding: 8px 16px;
-            cursor: pointer;
             font-family: monospace;
-            margin-bottom: 16px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            background: black;
+            color: white;
+            cursor: pointer;
         }
 
-        .button:hover {
-            opacity: 0.9;
+        /* Custom syntax coloring */
+        .json-key {
+            color: black;
+        }
+
+        .json-string {
+            color: green;
+        }
+
+        .json-number {
+            color: red;
+        }
+
+        .json-literal {
+            color: gray;
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <form id="convertForm">
-        <textarea class="text-box" id="inputText" name="inputText"></textarea>
-        <button type="submit" class="button">convert</button>
-        <textarea class="text-box" id="outputText" name="outputText" readonly></textarea>
-    </form>
+    <textarea id="inputText" placeholder="Paste input here"></textarea>
+
+    <div class="buttons">
+        <button class="button" id="convertBtn">beautify json</button>
+        <button class="button" id="convertBtnKube">beautify json k8s</button>
+    </div>
+
+    <pre id="outputText"></pre>
 </div>
+
 <script src="wasm_exec.js"></script>
 <script>
     const go = new Go();
 
-    WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
+    WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then(result => {
         go.run(result.instance);
+
+        document.getElementById("convertBtn").addEventListener("click", async () => {
+            const input = document.getElementById("inputText").value;
+
+            try {
+                const result = await convertText(input); // WASM Go function
+                const parsed = JSON.parse(result);
+                const formatted = syntaxHighlight(parsed);
+                document.getElementById("outputText").innerHTML = formatted;
+            } catch (err) {
+                document.getElementById("outputText").textContent = "// Error: " + err.message;
+            }
+        });
+
+        document.getElementById("convertBtnKube").addEventListener("click", async () => {
+            const input = document.getElementById("inputText").value;
+
+            try {
+                const result = await convertTextK8s(input); // WASM Go function
+                const parsed = JSON.parse(result);
+                const formatted = syntaxHighlight(parsed);
+                document.getElementById("outputText").innerHTML = formatted;
+            } catch (err) {
+                document.getElementById("outputText").textContent = "// Error: " + err.message;
+            }
+        });
     });
 
-    document.getElementById('convertForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const input = document.getElementById('inputText').value;
-
-        try {
-            const result = convertText(input);
-            const parsed = JSON.parse(result); // if it's JSON-like
-            document.getElementById('outputText').value = JSON.stringify(parsed, null, 2);
-        } catch (err) {
-            document.getElementById('outputText').value = result || 'Error: ' + err.message;
+    function syntaxHighlight(json) {
+        if (typeof json !== 'string') {
+            json = JSON.stringify(json, null, 2);
         }
-    });
+
+        json = json
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+        return json.replace(/("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(?:\s*:)?|\b(true|false|null)\b|\b-?\d+(\.\d+)?([eE][+-]?\d+)?\b)/g, match => {
+            if (/^"/.test(match)) {
+                return /:$/.test(match)
+                    ? `<span class="json-key">${match}</span>` // key
+                    : `<span class="json-string">${match}</span>`; // string value
+            }
+            if (/true|false|null/.test(match)) {
+                return `<span class="json-literal">${match}</span>`; // literals
+            }
+            return `<span class="json-number">${match}</span>`; // numbers
+        });
+    }
 </script>
 </body>
 </html>
